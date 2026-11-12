@@ -53,6 +53,8 @@ public class VirtualPadView extends View {
     private float lastLookX, lastLookY;
     private long lastLookTime;
     private static final long LOOK_IDLE_MS = 42;
+    // Restore Fix 4 swipe response. Launcher sensitivity is intentionally not exposed.
+    private static final float TOUCH_LOOK_BOOST = 9.0f;
     // Per pointer: the element and, for a button or the D-pad, its bits.
     private final int[] element = new int[MAX_POINTERS];
     private final int[] bit = new int[MAX_POINTERS];
@@ -526,7 +528,7 @@ public class VirtualPadView extends View {
         if (dx == 0 && dy == 0) return;
         float fullSpeed = Math.max(240f, getWidth() * 0.32f); // px/second for full stick deflection
         // Use the original swipe-to-stick mapping; camera sensitivity is configured in-game.
-        float gain = 1000f / (dt * fullSpeed);
+        float gain = TOUCH_LOOK_BOOST * 1000f / (dt * fullSpeed);
         rightX = Math.max(-1f, Math.min(1f, dx * gain));
         rightY = Math.max(-1f, Math.min(1f, -dy * gain)); // Xbox Y axis is up-positive
         send();
