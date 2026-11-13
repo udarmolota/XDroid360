@@ -49,6 +49,10 @@
         <item>Половина (по умолчанию, быстрее)</item>
         <item>Четверть (самая быстрая, мыльная)</item>
     </string-array>
+    <string name="setting_controls">Экранное управление</string>
+    <string name="setting_control_gamepad">Виртуальный геймпад (два стика)</string>
+    <string name="setting_control_touch">Сенсорное управление (движение + свайп)</string>
+    <string name="setting_control_hint">Слева: ведите палец от любой свободной точки для ходьбы. Справа: перемещайте палец для обзора. Камера останавливается, когда палец перестаёт двигаться. Кнопки и крестовина остаются на экране. Чувствительность камеры регулируется в настройках игры, если такая опция предусмотрена.</string>
     <string name="setting_vibrate">Вибрация экранных кнопок</string>
     <string name="driver_installed">Драйвер установлен: %1$s</string>
     <string name="driver_not_found">В этом файле нет драйвера .so.</string>

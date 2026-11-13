@@ -51,6 +51,10 @@
         <item>Half (default, faster)</item>
         <item>Quarter (fastest, blurry)</item>
     </string-array>
+    <string name="setting_controls">On-screen controls</string>
+    <string name="setting_control_gamepad">Virtual gamepad (two fixed sticks)</string>
+    <string name="setting_control_touch">Touch controls (move + swipe to look)</string>
+    <string name="setting_control_hint">Touch: press and drag anywhere free on the left half to move; swipe the right half to look. The camera stops as soon as your finger stops moving. On-screen buttons and the D-pad remain available. Adjust camera sensitivity in the game settings, when supported.</string>
     <string name="setting_vibrate">Vibrate on on-screen buttons</string>
     <string name="driver_installed">Driver installed: %1$s</string>
     <string name="driver_not_found">No .so driver in that file.</string>

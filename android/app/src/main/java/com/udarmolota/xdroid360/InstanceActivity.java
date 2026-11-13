@@ -96,12 +96,24 @@ public class InstanceActivity extends AppCompatActivity {
         MaterialSwitch diagnostics = findViewById(R.id.diagnostics);
         diagnostics.setChecked(instance.diagnostics);
         diagnostics.setOnCheckedChangeListener((b, on) -> { instance.diagnostics = on; save(); });
+        bindTouchControls();
         MaterialSwitch vibrate = findViewById(R.id.vibrate);
         vibrate.setChecked(instance.vibrateOnTouch);
         vibrate.setOnCheckedChangeListener((b, on) -> { instance.vibrateOnTouch = on; save(); });
 
         env = findViewById(R.id.env);
         env.setText(readEnv());
+    }
+
+    private void bindTouchControls() {
+        android.widget.RadioGroup group = findViewById(R.id.control_mode);
+        group.check(Instance.CONTROLS_TOUCH.equals(instance.controlMode)
+                ? R.id.control_touch : R.id.control_gamepad);
+        group.setOnCheckedChangeListener((g, checked) -> {
+            instance.controlMode = checked == R.id.control_touch
+                    ? Instance.CONTROLS_TOUCH : Instance.CONTROLS_GAMEPAD;
+            save();
+        });
     }
 
     private com.google.android.material.textfield.TextInputEditText env;

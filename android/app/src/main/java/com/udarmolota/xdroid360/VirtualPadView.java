@@ -22,10 +22,10 @@ import android.view.View;
  * preferences, as fractions of the screen).
  */
 public class VirtualPadView extends View {
-    private static final int MAX_POINTERS = 10;
+    private static final int MAX_POINTERS = 32; // Android MotionEvent pointer IDs are 0..31.
 
     // Elements a pointer can hold.
-    private static final int NONE = 0, LEFT_STICK = 1, RIGHT_STICK = 2, DPAD = 3, BUTTON = 4, TOGGLE = 5, DRAG = 6;
+    private static final int NONE = 0, LEFT_STICK = 1, RIGHT_STICK = 2, DPAD = 3, BUTTON = 4, TOGGLE = 5, DRAG = 6, LOOK_SWIPE = 7;
     private static final long EDIT_HOLD_MS = 600;
     private static final String PREFS = "virtual_pad";
 
@@ -48,7 +48,13 @@ public class VirtualPadView extends View {
     private final float[] dragDx = new float[MAX_POINTERS], dragDy = new float[MAX_POINTERS];
     private final SharedPreferences prefs;
     private boolean vibrateOnTouch;
-
+    private boolean touchMode;
+    private float savedLeftBaseX, savedLeftBaseY;
+    private float lastLookX, lastLookY;
+    private long lastLookTime;
+    private static final long LOOK_IDLE_MS = 42;
+    // Restore Fix 4 swipe response. Launcher sensitivity is intentionally not exposed.
+    private static final float TOUCH_LOOK_BOOST = 9.0f;
     // Per pointer: the element and, for a button or the D-pad, its bits.
     private final int[] element = new int[MAX_POINTERS];
     private final int[] bit = new int[MAX_POINTERS];
@@ -61,6 +67,14 @@ public class VirtualPadView extends View {
     private float leftBaseX, leftBaseY, rightBaseX, rightBaseY, stickRadius, knobRadius;
     private int leftStickPointer = -1, rightStickPointer = -1;
     private float leftKnobX, leftKnobY, rightKnobX, rightKnobY;
+
+    // Reset swipe-look only after all of its dependent instance fields are declared.
+    private final Runnable stopLook = () -> {
+        if (touchMode && rightStickPointer >= 0 && element[rightStickPointer] == LOOK_SWIPE) {
+            rightX = rightY = 0f;
+            send();
+        }
+    };
 
     // Buttons: circles and rounded rectangles, laid out in onSizeChanged.
     private static final class Button {
@@ -169,6 +183,12 @@ public class VirtualPadView extends View {
         vibrateOnTouch = on;
     }
 
+    /** Select input mapping before the view joins the game: fixed pads or touch zones. */
+    public void setControlMode(boolean touch) {
+        touchMode = touch;
+        invalidate();
+    }
+
     private void tick() {
         if (vibrateOnTouch) {
             performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
@@ -213,6 +233,8 @@ public class VirtualPadView extends View {
         if (x >= 0 && y >= 0) { leftBaseX = x * w; leftBaseY = y * h; leftKnobX = leftBaseX; leftKnobY = leftBaseY; }
         x = prefs.getFloat("rightx", -1); y = prefs.getFloat("righty", -1);
         if (x >= 0 && y >= 0) { rightBaseX = x * w; rightBaseY = y * h; rightKnobX = rightBaseX; rightKnobY = rightBaseY; }
+        savedLeftBaseX = leftBaseX;
+        savedLeftBaseY = leftBaseY;
     }
 
     private void moveButton(Button b, float cx, float cy) {
@@ -284,8 +306,12 @@ public class VirtualPadView extends View {
         drawDpadArm(canvas, dpadCx, dpadCy + arm - t, t, VirtualPad.DPAD_DOWN);
         drawDpadArm(canvas, dpadCx - arm + t, dpadCy, t, VirtualPad.DPAD_LEFT);
         drawDpadArm(canvas, dpadCx + arm - t, dpadCy, t, VirtualPad.DPAD_RIGHT);
-        drawStick(canvas, leftBaseX, leftBaseY, leftKnobX, leftKnobY, leftStickPointer >= 0);
-        drawStick(canvas, rightBaseX, rightBaseY, rightKnobX, rightKnobY, rightStickPointer >= 0);
+        // Touch mode has a floating left stick and an invisible swipe-to-look zone.
+        // The editor always shows both original sticks so their saved layout stays editable.
+        if (!touchMode || editing || leftStickPointer >= 0)
+            drawStick(canvas, leftBaseX, leftBaseY, leftKnobX, leftKnobY, leftStickPointer >= 0);
+        if (!touchMode || editing)
+            drawStick(canvas, rightBaseX, rightBaseY, rightKnobX, rightKnobY, rightStickPointer >= 0);
     }
 
     // Back: three bars (a "menu" icon).
@@ -354,6 +380,7 @@ public class VirtualPadView extends View {
                     int pid = event.getPointerId(i);
                     if (pid >= MAX_POINTERS) continue;
                     if (element[pid] == LEFT_STICK || element[pid] == RIGHT_STICK) moveStick(pid, event.getX(i), event.getY(i));
+                    else if (element[pid] == LOOK_SWIPE) moveLook(pid, event.getX(i), event.getY(i), event.getEventTime());
                     else if (element[pid] == DPAD) moveDpad(pid, event.getX(i), event.getY(i));
                     else if (element[pid] == DRAG) drag(pid, event.getX(i), event.getY(i));
                 }
@@ -395,6 +422,29 @@ public class VirtualPadView extends View {
             send();
             tick();
             return DPAD;
+        }
+        // In touch mode, any unused space on the left starts a floating movement stick,
+        // and unused space on the right is a relative look surface. Buttons have priority.
+        if (touchMode) {
+            if (x < getWidth() * 0.5f && leftStickPointer < 0) {
+                savedLeftBaseX = leftBaseX;
+                savedLeftBaseY = leftBaseY;
+                leftBaseX = leftKnobX = x;
+                leftBaseY = leftKnobY = y;
+                leftStickPointer = id;
+                moveStick(id, x, y);
+                return LEFT_STICK;
+            }
+            if (x >= getWidth() * 0.5f && rightStickPointer < 0) {
+                rightStickPointer = id;
+                lastLookX = x;
+                lastLookY = y;
+                lastLookTime = android.os.SystemClock.uptimeMillis();
+                rightX = rightY = 0;
+                send();
+                return LOOK_SWIPE;
+            }
+            return NONE;
         }
         if (leftStickPointer < 0 && Math.hypot(x - leftBaseX, y - leftBaseY) <= stickRadius * 1.5f) {
             leftStickPointer = id;
@@ -464,10 +514,44 @@ public class VirtualPadView extends View {
         send();
     }
 
+    /** Convert swipe velocity, not displacement from the first contact, to right-stick axes.
+     * A still finger therefore cannot keep turning the camera. The game continues to consume
+     * ordinary Xbox right-stick values; no mouse integration or game-specific patches needed.
+     */
+    private void moveLook(int id, float x, float y, long eventTime) {
+        if (id != rightStickPointer) return;
+        float dx = x - lastLookX, dy = y - lastLookY;
+        long dt = Math.max(1, eventTime - lastLookTime);
+        lastLookX = x;
+        lastLookY = y;
+        lastLookTime = eventTime;
+        if (dx == 0 && dy == 0) return;
+        float fullSpeed = Math.max(240f, getWidth() * 0.32f); // px/second for full stick deflection
+        // Use the original swipe-to-stick mapping; camera sensitivity is configured in-game.
+        float gain = TOUCH_LOOK_BOOST * 1000f / (dt * fullSpeed);
+        rightX = Math.max(-1f, Math.min(1f, dx * gain));
+        rightY = Math.max(-1f, Math.min(1f, -dy * gain)); // Xbox Y axis is up-positive
+        send();
+        removeCallbacks(stopLook);
+        postDelayed(stopLook, LOOK_IDLE_MS);
+    }
+
     private void release(int id) {
         switch (element[id]) {
-            case LEFT_STICK: leftStickPointer = -1; leftX = leftY = 0; leftKnobX = leftBaseX; leftKnobY = leftBaseY; break;
+            case LEFT_STICK:
+                leftStickPointer = -1; leftX = leftY = 0;
+                if (touchMode && !editing) {
+                    leftBaseX = savedLeftBaseX;
+                    leftBaseY = savedLeftBaseY;
+                }
+                leftKnobX = leftBaseX; leftKnobY = leftBaseY;
+                break;
             case RIGHT_STICK: rightStickPointer = -1; rightX = rightY = 0; rightKnobX = rightBaseX; rightKnobY = rightBaseY; break;
+            case LOOK_SWIPE:
+                removeCallbacks(stopLook);
+                rightStickPointer = -1;
+                rightX = rightY = 0;
+                break;
             case DPAD: buttons &= ~bit[id]; break;
             case BUTTON:
                 if (bit[id] == LT) leftTrigger = 0; else if (bit[id] == RT) rightTrigger = 0; else buttons &= ~bit[id];
@@ -486,6 +570,13 @@ public class VirtualPadView extends View {
         }
         element[id] = NONE;
         send();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        removeCallbacks(stopLook);
+        for (int i = 0; i < MAX_POINTERS; i++) if (element[i] != NONE) release(i);
+        super.onDetachedFromWindow();
     }
 
     private void send() {

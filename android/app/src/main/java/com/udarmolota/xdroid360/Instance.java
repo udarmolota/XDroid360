@@ -86,6 +86,9 @@ final class Instance {
         return SOD_TITLE_ID.equals(titleId()) && new File(root, "russian/gamedata.pak").isFile();
     }
     boolean vibrateOnTouch = false;
+    static final String CONTROLS_GAMEPAD = "gamepad", CONTROLS_TOUCH = "touch";
+    /** On-screen control mode; old installs retain the original two-stick mode. */
+    String controlMode = CONTROLS_GAMEPAD;
     /** The frame rate picked, 0 for the package's default (options.frame_rate). */
     int frameRate = 0;
     /** The graphics preset picked (options.preset), "" for the game's own settings. */
@@ -231,6 +234,7 @@ final class Instance {
             s.put("language", language);
             s.put("diagnostics", diagnostics);
             s.put("vibrate_on_touch", vibrateOnTouch);
+            s.put("control_mode", controlMode);
             s.put("frame_rate", frameRate);
             s.put("preset", preset);
             s.put("preset_written", presetWritten);
@@ -276,6 +280,8 @@ final class Instance {
                 hudMode = s.has("hud_mode") ? s.optInt("hud_mode", hudMode)
                         : s.optBoolean("perf_overlay", true) ? HUD_FULL : HUD_OFF;
                 vibrateOnTouch = s.optBoolean("vibrate_on_touch", vibrateOnTouch);
+                String mode = s.optString("control_mode", CONTROLS_GAMEPAD);
+                controlMode = CONTROLS_TOUCH.equals(mode) ? CONTROLS_TOUCH : CONTROLS_GAMEPAD;
                 frameRate = s.optInt("frame_rate", frameRate);
                 preset = s.optString("preset", preset);
                 presetWritten = s.optBoolean("preset_written", presetWritten);

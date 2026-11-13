@@ -122,6 +122,7 @@ public class GameActivity extends SDLActivity {
         if (mLayout != null) {
             VirtualPadView pad = new VirtualPadView(this, current != null ? current.id : null);
             pad.setVibrateOnTouch(current != null && current.vibrateOnTouch);
+            pad.setControlMode(current != null && Instance.CONTROLS_TOUCH.equals(current.controlMode));
             mLayout.addView(pad, new android.view.ViewGroup.LayoutParams(
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
             setUpPerfOverlay();
