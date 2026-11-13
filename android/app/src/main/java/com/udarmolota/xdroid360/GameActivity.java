@@ -46,9 +46,53 @@ public class GameActivity extends SDLActivity {
 
     private static native int nativeAbiVersion();
 
+    /** Reconnect Xenia's Vulkan presenter after Android replaces SDL's SurfaceView. */
+    private static native boolean nativeRequestSurfaceRecovery();
+
+    private static final int MAX_SURFACE_RECOVERY_ATTEMPTS = 24;
+    private final Handler surfaceRecoveryHandler = new Handler(Looper.getMainLooper());
+    private boolean surfaceRecoveryPending;
+    private boolean pausedSinceLastResume;
+    private int surfaceRecoveryAttempts;
+
+    private final Runnable surfaceRecoveryTask = new Runnable() {
+        @Override public void run() {
+            if (!surfaceRecoveryPending || isFinishing() || isDestroyed()) return;
+            // The Java overlay can appear before Android has supplied SDL with a
+            // replacement ANativeWindow. Never reconnect Vulkan against that gap.
+            android.view.Surface surface = mSurface != null ? mSurface.getHolder().getSurface() : null;
+            if (hasWindowFocus() && mSDLThread != null && surface != null && surface.isValid()
+                    && mSurface.getWidth() > 0 && mSurface.getHeight() > 0
+                    && nativeRequestSurfaceRecovery()) {
+                surfaceRecoveryPending = false;
+                Log.i(TAG, "Surface recovery: Vulkan reconnect requested");
+                return;
+            }
+            if (++surfaceRecoveryAttempts < MAX_SURFACE_RECOVERY_ATTEMPTS) {
+                surfaceRecoveryHandler.postDelayed(this, 150);
+            } else {
+                // Do not spin forever if the activity never regains a surface.
+                surfaceRecoveryPending = false;
+                Log.w(TAG, "Surface recovery: SDL window not ready after resume");
+            }
+        }
+    };
+
+    private void scheduleSurfaceRecovery() {
+        if (!surfaceRecoveryPending) return;
+        surfaceRecoveryHandler.removeCallbacks(surfaceRecoveryTask);
+        // SDL's Java surfaceChanged() callback updates the native window before
+        // the Vulkan presenter is allowed to reconnect.
+        surfaceRecoveryHandler.postDelayed(surfaceRecoveryTask, 300);
+    }
+
+
     @Override
     public void loadLibraries() {
         System.loadLibrary("SDL3");
+        // Tiny launcher-side recovery bridge, independent of libgame.so (which is
+        // generated on the phone and cannot be replaced by a launcher-only APK).
+        System.loadLibrary("xdroid_surface_recovery");
         File packaged = new File(installRoot(this), "libgame.so");
         if (current != null && current.library != null) {
             if (!current.library.isFile()) {
@@ -158,9 +202,34 @@ public class GameActivity extends SDLActivity {
     }
 
     @Override
+    protected void onPause() {
+        // SDL normally posts background/foreground events, but Vulkan can miss
+        // its disconnect/reconnect when the SurfaceView's window is recreated.
+        pausedSinceLastResume = true;
+        surfaceRecoveryHandler.removeCallbacks(surfaceRecoveryTask);
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (pausedSinceLastResume) {
+            pausedSinceLastResume = false;
+            surfaceRecoveryPending = true;
+            surfaceRecoveryAttempts = 0;
+            scheduleSurfaceRecovery();
+        }
+    }
+
+    @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) hideSystemBars(); // again after dialogs and coming back to the game
+        if (hasFocus) {
+            hideSystemBars(); // again after dialogs and coming back to the game
+            scheduleSurfaceRecovery();
+        } else {
+            surfaceRecoveryHandler.removeCallbacks(surfaceRecoveryTask);
+        }
     }
 
     // The game's keyboard (XamShowKeyboardUI, e.g. the character's name): an Android dialog
@@ -302,6 +371,8 @@ public class GameActivity extends SDLActivity {
 
     @Override
     protected void onDestroy() {
+        surfaceRecoveryPending = false;
+        surfaceRecoveryHandler.removeCallbacks(surfaceRecoveryTask);
         super.onDestroy();
         if (perfThread != null) {
             perfThread.quitSafely();

@@ -66,6 +66,13 @@ add_library(vkdriverhook SHARED vkdriverhook.c)
 target_compile_options(vkdriverhook PRIVATE -fvisibility=hidden -Wall -Wextra)
 target_link_options(vkdriverhook PRIVATE -Wl,-z,global -Wl,-z,max-page-size=16384)
 
+# ------------------------------------------------------ Android surface recovery
+# Launcher JNI bridge that posts SDL lifecycle events to restore the Vulkan
+# presenter after Android replaces the surface during Home / Recents.
+add_library(xdroid_surface_recovery SHARED surface_recovery.c)
+target_link_libraries(xdroid_surface_recovery PRIVATE dl log)
+target_link_options(xdroid_surface_recovery PRIVATE -Wl,-z,max-page-size=16384)
+
 # ---------------------------------------------------------------- the game library
 
 if (DAO_LAUNCHER_ONLY)
