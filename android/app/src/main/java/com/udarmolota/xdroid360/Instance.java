@@ -40,6 +40,16 @@ final class Instance {
     String sysmem = SYSMEM_AUTO;
     /** Texture detail (dao_texture_lod_bias: 0 full, 1 low, 2 ultra low) picked, -1 for the default. */
     int textureLodBias = -1;
+    /**
+     * Widescreen (Dragon Age: Origins only): the game is told a display as wide as the screen
+     * (DAO_FILL_SCREEN, see GameActivity.applyInstanceSettings) instead of 16:9 with black bars.
+     */
+    boolean widescreen = false;
+
+    /** Whether the Widescreen setting exists for this game. */
+    boolean hasWidescreen() {
+        return DAO_TITLE_ID.equals(titleId());
+    }
 
     /**
      * The texture detail to start with: the one picked, else the renderer's default. Xenia starts
@@ -289,6 +299,7 @@ final class Instance {
             s.put("texture_lod", textureLodBias);                 // -1: the renderer's default
             s.put("texture_lod_bias", textureLodToUse());         // what an older launcher reads
             s.put("hud_mode", hudMode);
+            s.put("widescreen", widescreen);
             s.put("language", language);
             s.put("diagnostics", diagnostics);
             s.put("vibrate_on_touch", vibrateOnTouch);
@@ -335,6 +346,7 @@ final class Instance {
                 }
                 // Before hud_mode: the performance bar was a switch, on unless turned off.
                 language = s.optString("language", language);
+                widescreen = s.optBoolean("widescreen", widescreen);
                 diagnostics = s.optBoolean("diagnostics", diagnostics);
                 hudMode = s.has("hud_mode") ? s.optInt("hud_mode", hudMode)
                         : s.optBoolean("perf_overlay", true) ? HUD_FULL : HUD_OFF;
@@ -354,12 +366,150 @@ final class Instance {
 
     // ---------------------------------------------------------------- the store
 
-    /** dao/ on the shared storage: the development build's game, and instances/. */
+    /** The public folder the games' data lives in when "All files access" is granted. */
+    static final String SHARED_DIR = "XDroid360/dao";
+
+    private static boolean migrated;
+
+    /**
+     * Where the games' data lives: {@code /sdcard/XDroid360/dao} (the same for every build of
+     * the app, whatever its package name) once "All files access" is granted, else the app's
+     * own folder under Android/data, as before.
+     */
     static File daoRoot(Context context) {
+        File shared = sharedRoot();
+        if (shared != null) {
+            migrateLegacyRoot(context, shared);
+            return shared;
+        }
+        return legacyRoot(context);
+    }
+
+    /** The app's own folder (Android/data/<package>/files/dao, or the private files/dao). */
+    private static File legacyRoot(Context context) {
         File external = context.getExternalFilesDir(null);
         return new File(external != null ? external : context.getFilesDir(), "dao");
     }
 
+    /** True if the data is in the public folder: all builds of the app see the same games. */
+    static boolean usesSharedStorage() {
+        return sharedRoot() != null;
+    }
+
+    /** The public folder, or null where it can't be used (Android 10, or access not granted). */
+    private static File sharedRoot() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R
+                || !android.os.Environment.isExternalStorageManager()) {
+            return null;
+        }
+        File dir = new File(android.os.Environment.getExternalStorageDirectory(), SHARED_DIR);
+        //noinspection ResultOfMethodCallIgnored
+        dir.mkdirs();
+        return dir.isDirectory() && dir.canWrite() ? dir : null;
+    }
+
+    /**
+     * The first time the public folder is used: what is in the app's own folder moves into it,
+     * if the public one has no games yet (a rename within the same volume, so it takes no
+     * time and no space). Nothing is overwritten.
+     */
+    private static synchronized void migrateLegacyRoot(Context context, File shared) {
+        if (migrated) return;
+        migrated = true;
+        File legacy = legacyRoot(context);
+        File[] entries = legacy.listFiles();
+        if (entries == null || entries.length == 0 || new File(shared, "instances").exists()
+                || new File(shared, "game").exists()) {
+            return;
+        }
+        for (File entry : entries) {
+            File target = new File(shared, entry.getName());
+            if (!target.exists() && !entry.renameTo(target)) {
+                android.util.Log.w("Instance", "Can't move " + entry + " to " + target);
+            }
+        }
+    }
+
+    // ------------------------------------------------ the game library in the public folder
+
+    private static final java.util.concurrent.atomic.AtomicBoolean syncing =
+            new java.util.concurrent.atomic.AtomicBoolean();
+
+    /**
+     * The built game library (libgame.so) is kept twice when the data is in the public folder:
+     * the copy the game loads stays in the app's internal files (Android doesn't map code from
+     * shared storage), and a copy sits beside the game's other files in
+     * {@code XDroid360/dao/instances/<id>/}, so a file manager reaches it and any other build
+     * of the app finds the game already built. This brings the two in line, in the background:
+     * a library only on one side is copied to the other, and of two different ones the newer
+     * wins. {@code onChanged} runs on the main thread if a library was copied (a game may then
+     * have become complete: the list needs another look).
+     */
+    static void syncLibraries(Context context, Runnable onChanged) {
+        if (!usesSharedStorage() || !syncing.compareAndSet(false, true)) return;
+        final Context app = context.getApplicationContext();
+        new Thread(() -> {
+            boolean changed = false;
+            try {
+                java.util.Set<String> ids = new java.util.TreeSet<>();
+                for (File root : new File[] { instancesRoot(app), new File(app.getFilesDir(), "instances") }) {
+                    File[] dirs = root.listFiles();
+                    if (dirs == null) continue;
+                    for (File d : dirs) {
+                        if (d.isDirectory()) ids.add(d.getName());
+                    }
+                }
+                for (String id : ids) {
+                    changed |= syncLibrary(app, id);
+                }
+            } catch (IOException | RuntimeException e) {
+                android.util.Log.w("Instance", "Library sync: " + e);
+            } finally {
+                syncing.set(false);
+            }
+            if (changed) {
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(onChanged);
+            }
+        }, "library-sync").start();
+    }
+
+    private static boolean syncLibrary(Context app, String id) throws IOException {
+        File shared = new File(new File(instancesRoot(app), id), "libgame.so");
+        // Only a complete game: its instance.json is in the public folder.
+        if (!new File(shared.getParentFile(), "instance.json").isFile()) return false;
+        File internal = libraryFor(app, id);
+        if (internal.isFile() && !shared.isFile()) {
+            copyLibrary(internal, shared);
+            return true;
+        }
+        if (!internal.isFile() && shared.isFile()) {
+            copyLibrary(shared, internal);
+            return true;
+        }
+        if (!internal.isFile()) return false;
+        if (internal.length() == shared.length() && Math.abs(internal.lastModified() - shared.lastModified()) < 2000) {
+            return false;
+        }
+        if (shared.lastModified() > internal.lastModified()) {
+            copyLibrary(shared, internal);
+        } else {
+            copyLibrary(internal, shared);
+        }
+        return true;
+    }
+
+    /** Copies through a temporary file, so a library is never half there; keeps its time. */
+    private static void copyLibrary(File from, File to) throws IOException {
+        //noinspection ResultOfMethodCallIgnored
+        to.getParentFile().mkdirs();
+        File tmp = new File(to.getPath() + ".tmp");
+        Files.copy(from.toPath(), tmp.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        //noinspection ResultOfMethodCallIgnored
+        tmp.setLastModified(from.lastModified());
+        Files.move(tmp.toPath(), to.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    /** instances/ under it: one folder per installed game. */
     static File instancesRoot(Context context) {
         return new File(daoRoot(context), "instances");
     }
@@ -459,7 +609,7 @@ final class Instance {
     void delete(Context context) {
         if (isDev()) {
             // The development build's files share dao/ with the instances: only its own go.
-            for (String name : new String[] { "game", "userdata", "driver", "title_update", "instance.json", "banner.jpg" }) {
+            for (String name : new String[] { "game", "userdata", "driver", "title_update", "mods", "instance.json", "banner.jpg" }) {
                 deleteTree(new File(root, name));
             }
             return;

@@ -330,10 +330,12 @@ def recipe(kit, xex_sha256s, headers, headers_tu):
              "files": {"${GAME}/game/default.xex": xex_sha256s},
              "message": "unsupported_game_version"},
             # The native renderer's shader library from the game's own shaders (libshaderlib.so,
-            # XenosRecomp and DXC: about 11 s on an S25). Again on every "Update game": a new
-            # launcher may translate them better.
+            # XenosRecomp and DXC: about 11 s on an S25). Again on "Update game" if the translator
+            # (libshaderlib.so) is not the one that made the library, or the library is gone
+            # (rerun, outputs: RecipeRunner.rerunCurrent).
             {"id": "shaders", "kind": "run", "label": "Translating shaders", "weight": 2,
              "tool": "shaderlib", "rerun": True, "creates": ["${GAME}/userdata"],
+             "outputs": ["${GAME}/userdata/nfsmw_shaders.nfsp"],
              "args": ["${GAME}/game/packages/core/data/shaders.erf", "${GAME}/userdata/nfsmw_shaders.nfsp",
                       "-j", "${JOBS}"],
              "progress": "progress ([0-9]+)/([0-9]+)"},

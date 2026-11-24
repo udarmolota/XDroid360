@@ -9,7 +9,7 @@
             android:id="@+id/nav_driver"
             android:icon="@drawable/ic_memory"
             android:title="@string/nav_install_driver" />
-        <!-- Saves and the gamepad's layout are on the bottom bar (Import, Export, Controls). -->
+        <!-- Saves, the gamepad's layout and the mods are on the bottom bar (Import/Export, Controls). -->
     </group>
     <group android:id="@+id/group_help">
         <item
@@ -20,6 +20,10 @@
             android:id="@+id/nav_how"
             android:icon="@drawable/ic_help"
             android:title="@string/launcher_how" />
+        <item
+            android:id="@+id/nav_theme"
+            android:icon="@drawable/ic_palette"
+            android:title="@string/nav_theme" />
         <item
             android:id="@+id/nav_about"
             android:icon="@drawable/ic_info"

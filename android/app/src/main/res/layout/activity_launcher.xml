@@ -19,10 +19,10 @@
             app:logo="@drawable/dao_logo_small"
             app:navigationIcon="@drawable/ic_menu"
             app:title="@string/app_name"
-            app:titleTextColor="@color/dao_red" />
+            app:titleTextColor="?attr/colorPrimary" />
 
-        <!-- The tabs of the bottom bar: home (the games), import/export (one screen for both,
-             LauncherActivity.showTransfer), the other projects. -->
+        <!-- The tabs of the bottom bar: home (the games), import/export (LauncherActivity.bindTransfer),
+             the other projects. -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -60,7 +60,7 @@
                         android:layout_height="wrap_content"
                         android:text="@string/launcher_empty_title"
                         android:textAppearance="?attr/textAppearanceTitleLarge"
-                        android:textColor="@color/dao_red" />
+                        android:textColor="?attr/colorPrimary" />
 
                     <TextView
                         android:layout_width="match_parent"
@@ -87,7 +87,8 @@
             </com.google.android.material.card.MaterialCardView>
         </FrameLayout>
 
-        <!-- Import or export: the game, then a card each for its saves and the gamepad layout. -->
+        <!-- Import/Export: the game, then a card each for its saves and the gamepad layout (Import and Export
+             on each), and for Dragon Age: Origins its DLC and its mods. -->
         <ScrollView
             android:id="@+id/transfer_pane"
             android:layout_width="match_parent"
@@ -151,18 +152,33 @@
                             android:layout_height="wrap_content"
                             android:text="@string/transfer_saves" />
 
-                        <TextView
-                            android:id="@+id/transfer_saves_hint"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:textAppearance="?attr/textAppearanceBodySmall" />
-
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/transfer_saves"
+                            android:id="@+id/transfer_saves_import"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            app:icon="@drawable/ic_save" />
+                            android:text="@string/transfer_import_button"
+                            app:icon="@drawable/ic_import" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/transfer_saves_import_hint"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/transfer_saves_export"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/transfer_export_button"
+                            app:icon="@drawable/ic_export" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/transfer_saves_export_hint"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -183,18 +199,33 @@
                             android:layout_height="wrap_content"
                             android:text="@string/transfer_pad" />
 
-                        <TextView
-                            android:id="@+id/transfer_pad_hint"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:textAppearance="?attr/textAppearanceBodySmall" />
-
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/transfer_pad"
+                            android:id="@+id/transfer_pad_import"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            app:icon="@drawable/ic_gamepad" />
+                            android:text="@string/transfer_import_button"
+                            app:icon="@drawable/ic_import" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/transfer_pad_import_hint"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/transfer_pad_export"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/transfer_export_button"
+                            app:icon="@drawable/ic_export" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/transfer_pad_export_hint"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -230,6 +261,40 @@
                             android:layout_marginTop="8dp"
                             android:text="@string/transfer_import_button"
                             app:icon="@drawable/ic_import" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+                <!-- Dragon Age: Origins only: its file-override mods (ModsActivity). -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/transfer_mods_card"
+                    style="@style/DaoCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        style="@style/DaoCardContent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <TextView
+                            style="@style/DaoCardTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/transfer_mods" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/transfer_mods_hint"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/transfer_mods_open"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/transfer_mods_button"
+                            app:icon="@drawable/ic_extension" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
@@ -269,7 +334,7 @@
                             android:layout_height="32dp"
                             android:importantForAccessibility="no"
                             android:src="@drawable/ic_reddit"
-                            app:tint="@color/dao_red" />
+                            app:tint="?attr/colorPrimary" />
 
                         <LinearLayout
                             android:layout_width="0dp"

@@ -49,6 +49,9 @@
     <string name="language_auto">The phone\'s language</string>
     <string name="setting_diagnostics">Diagnostics for bug reports</string>
     <string name="setting_diagnostics_help">Writes the GPU\'s measurements into the game\'s log (a little slower). Turn it on, play the part that misbehaves, then Report a bug.</string>
+    <string name="setting_widescreen">Widescreen</string>
+    <string name="widescreen_on">On</string>
+    <string name="widescreen_off">Off</string>
     <string name="setting_lod">Texture quality</string>
     <string-array name="lod">
         <item>Full (sharpest)</item>
@@ -66,9 +69,35 @@
     <string name="launcher_how">How to add a game</string>
     <string name="launcher_how_text">1. Copy your own game to this phone: the disc image (.iso) of Dragon Age: Origins, or a .zip with your game (Dragon Age: Origins\' disc image, or State of Decay\'s folder from your console\'s storage).\n\n2. Tap + and pick it.\n\n3. Installing includes the static recompilation of the game\'s code for the phone: 5–10 minutes, plus copying the game files. You can leave the launcher meanwhile.\n\n4. Tap Play.\n\nThe game is your own copy: nothing of it comes with this app.</string>
     <string name="nav_install_driver">Install a driver</string>
-    <string name="nav_install_saves">Install saves (.zip)</string>
     <string name="nav_pad_editor">On-screen gamepad layout</string>
     <string name="nav_about">About</string>
+    <string name="nav_theme">Theme</string>
+    <string name="mods_title">Mods: %1$s</string>
+    <string name="mods_hint">Changes apply the next time the game starts. Only mods made for the Xbox 360 version work; mods made for the PC version (models, textures) usually don\'t.</string>
+    <string name="mods_empty">No mods yet. Add a .zip with the button above.</string>
+    <string name="mods_add">Add mod (.zip)</string>
+    <string name="mods_up">Up</string>
+    <string name="mods_down">Down</string>
+    <string name="mods_delete">Delete</string>
+    <string name="mods_delete_title">Delete %1$s?</string>
+    <string name="mods_delete_message">The mod\'s files are removed from this game.</string>
+    <string name="mods_adding">Adding the mod…</string>
+    <string name="mods_added">Added %1$s</string>
+    <string name="mods_failed">Couldn\'t add the mod: %1$s</string>
+    <string name="mods_no_files">The .zip has no game files.</string>
+    <string name="theme_mode">Appearance</string>
+    <string name="theme_system">Follow the system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_accent">Dark theme</string>
+    <string name="theme_red">Dark Red</string>
+    <string name="theme_orange">Dark Orange</string>
+    <string name="theme_yellow">Dark Yellow</string>
+    <string name="theme_blue">Dark Blue</string>
+    <string name="theme_green">Dark Green</string>
+    <string name="theme_preview">Preview</string>
+    <string name="theme_sample">XDroid360 launcher</string>
+    <string name="theme_sample_button">Play</string>
     <string name="about_licenses">Licences</string>
     <string name="about_licenses_text" translatable="false">XDroid360 is MIT-licensed, except its native renderer, which is GPL-3.0. Dragon Age: Origins\' game library links it, so that library and this app are GPL-3.0 as a whole (source: github.com/udarmolota/XDroid360 at the release\'s tag). It carries:\n\n• The native renderer: nfsmw-android by codepdbh, after nfsmw-nx (StevensND), NFSMW-Recompiled (madelrandel-blip) and NFSMW-Recompiled-Mobile (victorgbd) (GPL-3.0); ReXGlue SDK (BSD 3-Clause)\n• SDL 3 (zlib)\n• Mesa Turnip, StevenMXZ\'s Gen8 build (MIT)\n• liblinkernsbypass (BSD 2-Clause)\n• AndroidX, Material Components, Material icons (Apache-2.0)\n• LLVM clang, lld, libc++, libunwind, compiler-rt (Apache-2.0 with LLVM exception)\n• Android NDK sysroot (Apache-2.0, BSD; Android SDK License Agreement)\n• XenonRecomp, the recompiler the launcher runs (GPL-2.0+ as a whole, for its binutils disassembler; source: github.com/hedge-dev/XenonRecomp at ddd128bc plus scripts/patch_recompiler.py at b7bd9be of github.com/udarmolota/Dragon-Age-Origins-Recomp-Android)\n• shaderlib, the shader translator the launcher runs (GPL-3.0 as a whole), with XenosRecomp, fmt, xxHash (MIT, BSD)\n• DirectXShaderCompiler (University of Illinois/NCSA), with SPIRV-Tools, SPIRV-Headers, DirectX-Headers (Apache-2.0, MIT)\n• XenonUtils (MIT)\n• DAORecomp by 96dot, SoDRecomp (MIT)\n• Xenia (BSD 3-Clause)\n• Vulkan-Headers, VulkanMemoryAllocator, glslang, fmt, xxHash, Snappy, Dear ImGui, toml++, SIMDe, FidelityFX (Apache-2.0, MIT, BSD)\n• FFmpeg 8.0, has207/FFmpeg (LGPL 2.1+; source: github.com/has207/FFmpeg)\n• libmspack (LGPL 2.1), tiny-AES-c (Unlicense), TinySHA1\n\nThe full texts are in the licenses/ folders of the kit and the game profiles inside the APK, and in NOTICE.md at github.com/udarmolota/XDroid360.</string>
     <string name="about_text">XDroid360: Xbox 360 games on Android, built on DAORecomp by 96dot, Xenia\'s Vulkan backend and Mesa\'s Turnip. Made with the help of AI.\n\nNo game code or data comes with this app: the phone builds each game from the player\'s own disc.\n\nDragon Age is a trademark of Electronic Arts; this project is not affiliated with EA or BioWare.</string>
@@ -78,9 +107,7 @@
     <string name="pad_reset">Reset</string>
     <string name="pad_done">Done</string>
     <string name="saves_export">Export saves (.zip)</string>
-    <string name="saves_import">Import saves (.zip)</string>
     <string name="saves_exported">Saves exported: %1$d files</string>
-    <string name="instance_delete_dev_confirm">Delete the development build\'s game \"%1$s\" with its saves? Export the saves first if you want to keep them. Added games aren\'t touched.</string>
     <string name="bug_report_title">Report a bug</string>
     <string name="bug_report_intro">Something went wrong? Send a report.</string>
     <string name="bug_report_pick_game">Choose the game</string>
@@ -108,8 +135,7 @@
     <string name="preset_low">Low</string>
     <string name="preset_very_low">Very low</string>
     <string name="tab_home">Home</string>
-    <string name="tab_import">Import</string>
-    <string name="tab_export">Export</string>
+    <string name="tab_transfer">Import/Export</string>
     <string name="tab_controls">Controls</string>
     <string name="tab_projects">Projects</string>
     <string name="transfer_no_game">Add a game first: import and export work on a game\'s saves and its gamepad layout.</string>
@@ -136,6 +162,9 @@
     <string name="dlc_failed">Couldn\'t install: %1$s</string>
     <string name="dlc_nothing">No Dragon Age: Origins downloadable content was found in what you picked.</string>
     <string name="dlc_no_space">not enough free space</string>
+    <string name="transfer_mods">Mods</string>
+    <string name="transfer_mods_hint">Dragon Age: Origins only. File-override mods: switch them on and off, set their order and add a .zip.</string>
+    <string name="transfer_mods_button">Manage mods</string>
     <string name="transfer_import_button">Import</string>
     <string name="transfer_export_button">Export</string>
     <string name="pad_exported">Gamepad layout exported</string>
@@ -156,7 +185,6 @@
     <string name="lod_full">Full</string>
     <string name="lod_low">Low</string>
     <string name="lod_ultra_low">Ultra low</string>
-    <string name="check_no_d24s8">No 24-bit depth buffer: a 32-bit one is used instead.</string>
     <!-- Adding a game: the build on the phone (BuildActivity, BuildService). -->
     <string name="build_title">Add game</string>
     <string name="build_reading">Reading the game…</string>
@@ -236,6 +264,7 @@
 <p><b>Renderer</b>: Native draws the game directly with Vulkan and is much faster; Xenia (emulated) is the fallback if Native shows something wrong.<br>
 <b>Driver</b>: Automatic uses the built-in Turnip on Adreno 7xx/8xx and the phone\'s own driver elsewhere. You can install another one from the menu.<br>
 <b>Frame rate</b>: 30 is cooler and kinder to the battery; 60 is smoother.<br>
+<b>Widescreen</b> (Dragon Age only): fills the screen\'s width instead of black bars; turn it off if the picture looks wrong.<br>
 <b>Texture detail</b>: lower it if the game runs out of memory.</p>
 
 <h3>Controls and saves</h3>
@@ -267,6 +296,11 @@
     <string name="cheat_gold_note">Adds gold to the party\'s purse.</string>
     <string name="cheat_xp_note">Experience for the whole party, as the game rewards it.</string>
     <string name="cheat_strengthen_note">Health and mana 1,000, strength and dexterity 50, for everyone in the party. Permanent.</string>
+    <string name="cheat_ability">Add Ability (by ID)</string>
+    <string name="cheat_ability_note">Gives the character you control an ability by its id. 4020 is the Rogue\'s hidden ability: with it a mage or warrior can pick locks and disarm traps. Permanent: save first.</string>
+    <string name="cheat_ability_hint">Ability ID</string>
+    <string name="cheat_ability_add">Add</string>
+    <string name="cheat_done_ability">Ability %1$d added to the character you control</string>
     <string name="cheat_done_immortal_on">The party can\'t die</string>
     <string name="cheat_done_immortal_off">The party can die again</string>
     <string name="cheat_done_skills_on">Every skill check succeeds</string>

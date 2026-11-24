@@ -82,7 +82,7 @@
                     android:layout_weight="1"
                     android:text="@string/bug_report_email"
                     android:textAppearance="?attr/textAppearanceTitleMedium"
-                    android:textColor="@color/dao_red"
+                    android:textColor="?attr/colorPrimary"
                     android:textIsSelectable="true" />
 
                 <com.google.android.material.button.MaterialButton

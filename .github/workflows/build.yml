@@ -150,6 +150,11 @@ jobs:
         with:
           submodules: recursive
 
+      # Widescreen (experimental): changes to the recomp submodule (DAO.toml's mid-asm hook and
+      # its function in DAORecomp), kept here as a patch so the submodule pointer stays as it is.
+      - name: Apply the widescreen patch to recomp
+        run: git -C recomp apply --whitespace=nowarn "$GITHUB_WORKSPACE/patches/recomp-widescreen.patch"
+
       - name: Read app version
         id: app_version
         shell: bash

@@ -113,6 +113,7 @@ public class LauncherActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Appearance.apply(this);
         super.onCreate(savedInstanceState);
         if (savedInstanceState != null) { // a picker's target, if Android restarted the launcher meanwhile
             pickForId = savedInstanceState.getString("pick_for");
@@ -190,8 +191,7 @@ public class LauncherActivity extends AppCompatActivity {
 
     private com.google.android.material.bottomnavigation.BottomNavigationView bottomNav;
     private boolean projectsFilled;
-    /** The Import/Export tab's mode and game. */
-    private boolean transferExport;
+    /** The game the Import/Export tab works on. */
     private Instance transferFor;
 
     private boolean onBottomNav(MenuItem item) {
@@ -205,10 +205,9 @@ public class LauncherActivity extends AppCompatActivity {
         View home = findViewById(R.id.home_pane), transfer = findViewById(R.id.transfer_pane),
                 projects = findViewById(R.id.projects_pane);
         home.setVisibility(id == R.id.tab_home ? View.VISIBLE : View.GONE);
-        transfer.setVisibility(id == R.id.tab_import || id == R.id.tab_export ? View.VISIBLE : View.GONE);
+        transfer.setVisibility(id == R.id.tab_transfer ? View.VISIBLE : View.GONE);
         projects.setVisibility(id == R.id.tab_projects ? View.VISIBLE : View.GONE);
-        if (id == R.id.tab_import || id == R.id.tab_export) {
-            transferExport = id == R.id.tab_export;
+        if (id == R.id.tab_transfer) {
             bindTransfer();
         } else if (id == R.id.tab_projects && !projectsFilled) {
             ProjectsPane.fill(this, findViewById(R.id.projects_reddit), findViewById(R.id.projects_list));
@@ -217,7 +216,7 @@ public class LauncherActivity extends AppCompatActivity {
         return true;
     }
 
-    /** Import or Export: the game (one radio button each), then its saves and its pad layout. */
+    /** Import/Export: the game (a drop-down list), then its saves, its pad layout and, for Dragon Age, its DLC and mods. */
     private void bindTransfer() {
         boolean none = instances.isEmpty();
         findViewById(R.id.transfer_none).setVisibility(none ? View.VISIBLE : View.GONE);
@@ -226,6 +225,7 @@ public class LauncherActivity extends AppCompatActivity {
         }
         if (none) {
             findViewById(R.id.transfer_dlc_card).setVisibility(View.GONE);
+            findViewById(R.id.transfer_mods_card).setVisibility(View.GONE);
             return;
         }
         // Which game: a drop-down list. With one game it is chosen; with several none is until the
@@ -267,30 +267,27 @@ public class LauncherActivity extends AppCompatActivity {
             pickDlc.launch(new String[] { "*/*" });
         });
 
-        ((TextView) findViewById(R.id.transfer_saves_hint)).setText(
-                transferExport ? R.string.transfer_saves_export_hint : R.string.transfer_saves_import_hint);
-        ((TextView) findViewById(R.id.transfer_pad_hint)).setText(
-                transferExport ? R.string.transfer_pad_export_hint : R.string.transfer_pad_import_hint);
-        int button = transferExport ? R.string.transfer_export_button : R.string.transfer_import_button;
-        ((TextView) findViewById(R.id.transfer_saves)).setText(button);
-        ((TextView) findViewById(R.id.transfer_pad)).setText(button);
-        findViewById(R.id.transfer_saves).setOnClickListener(v -> {
-            if (transferFor == null) return; // no game picked yet
-            if (transferExport) exportSavesOf(transferFor);
-            else pick(transferFor, PICK_SAVES);
+        findViewById(R.id.transfer_saves_import).setOnClickListener(v -> {
+            if (transferFor != null) pick(transferFor, PICK_SAVES); // (none picked yet: nothing)
         });
-        findViewById(R.id.transfer_pad).setOnClickListener(v -> {
-            if (transferFor == null) return; // no game picked yet
-            if (transferExport) {
-                exportForId = transferFor.id;
-                exportPad.launch(padFileName(transferFor));
-            } else {
-                pick(transferFor, PICK_PAD);
-            }
+        findViewById(R.id.transfer_saves_export).setOnClickListener(v -> {
+            if (transferFor != null) exportSavesOf(transferFor);
+        });
+        findViewById(R.id.transfer_pad_import).setOnClickListener(v -> {
+            if (transferFor != null) pick(transferFor, PICK_PAD);
+        });
+        findViewById(R.id.transfer_pad_export).setOnClickListener(v -> {
+            if (transferFor == null) return;
+            exportForId = transferFor.id;
+            exportPad.launch(padFileName(transferFor));
+        });
+        findViewById(R.id.transfer_mods_open).setOnClickListener(v -> {
+            if (transferFor != null) startActivity(new Intent(this, ModsActivity.class)
+                    .putExtra(InstanceActivity.EXTRA_ID, transferFor.id));
         });
     }
 
-    // -------------------- Dragon Age's downloadable content (Import tab) --------------------
+    // -------------------- Dragon Age's downloadable content (Import/Export tab) --------------------
 
     private final ActivityResultLauncher<String[]> pickDlc =
             registerForActivityResult(new ActivityResultContracts.OpenMultipleDocuments(), uris -> {
@@ -312,16 +309,18 @@ public class LauncherActivity extends AppCompatActivity {
     /** What depends on the game picked: the buttons work only once one is, and the DLC card. */
     private void showTransferTargets() {
         boolean picked = transferFor != null;
-        for (int button : new int[] { R.id.transfer_saves, R.id.transfer_pad }) {
+        for (int button : new int[] { R.id.transfer_saves_import, R.id.transfer_saves_export,
+                R.id.transfer_pad_import, R.id.transfer_pad_export, R.id.transfer_mods_open }) {
             findViewById(button).setEnabled(picked);
         }
-        showDlcCard();
+        showDaoCards();
     }
 
-    /** The DLC card: on Import, for Dragon Age: Origins (the one game with DLC to add). */
-    private void showDlcCard() {
+    /** The DLC and mods cards: for Dragon Age: Origins, the one game with DLC to add and mods to use. */
+    private void showDaoCards() {
         boolean dao = transferFor != null && Instance.DAO_TITLE_ID.equals(transferFor.titleId());
-        findViewById(R.id.transfer_dlc_card).setVisibility(!transferExport && dao ? View.VISIBLE : View.GONE);
+        findViewById(R.id.transfer_dlc_card).setVisibility(dao ? View.VISIBLE : View.GONE);
+        findViewById(R.id.transfer_mods_card).setVisibility(dao ? View.VISIBLE : View.GONE);
     }
 
     /** Installs the picked packages in the background, with a progress dialog, then says what happened. */
@@ -434,7 +433,45 @@ public class LauncherActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        askForSharedStorage();
         refresh();
+        // The built games' libraries, in line with the public folder's copies (in the background).
+        Instance.syncLibraries(this, this::refresh);
+    }
+
+    private boolean sharedStorageAsked;
+
+    /**
+     * Once per install (until answered): "All files access", so the games' data can live in
+     * /sdcard/XDroid360, shared by every build of the app whatever its package name. "Not now"
+     * keeps the data in the app's own folder; the question comes back only if asked again here.
+     */
+    private void askForSharedStorage() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R
+                || android.os.Environment.isExternalStorageManager() || sharedStorageAsked) {
+            return;
+        }
+        android.content.SharedPreferences prefs = getSharedPreferences("launcher", MODE_PRIVATE);
+        if (prefs.getBoolean("shared_storage_declined", false)) return;
+        sharedStorageAsked = true;
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Keep the games' data in /XDroid360?")
+                .setMessage("With \"All files access\", the games, saves and settings live in the folder "
+                        + "XDroid360 on your phone's storage instead of this app's private folder. Every "
+                        + "build of XDroid360 then uses the same data, whatever its package name, and "
+                        + "you can reach it with a file manager.\n\nGames already in this app's own "
+                        + "folder move there. Without the access nothing changes.")
+                .setPositiveButton("Allow", (d, w) -> {
+                    Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            Uri.parse("package:" + getPackageName()));
+                    try {
+                        startActivity(intent);
+                    } catch (RuntimeException e) {
+                        startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                    }
+                })
+                .setNegativeButton("Not now", (d, w) -> prefs.edit().putBoolean("shared_storage_declined", true).apply())
+                .show();
     }
 
     private void refresh() {
@@ -544,6 +581,7 @@ public class LauncherActivity extends AppCompatActivity {
         else if (id == R.id.nav_driver) InstanceActions.choose(this, R.string.nav_install_driver, instances,
                 i -> pick(i, PICK_DRIVER));
         else if (id == R.id.nav_bug) bugReport(instances.isEmpty() ? null : instances.get(0));
+        else if (id == R.id.nav_theme) Appearance.showDialog(this);
         else if (id == R.id.nav_about) showAbout();
         else return false;
         return true;

@@ -24,6 +24,7 @@ namespace
         kGold,
         kExperience,
         kStrengthen,
+        kAddAbility,
     };
 
     // The amounts the buttons of the Gold and Experience rows add.
@@ -110,6 +111,14 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_udarmolota_xdroid360_GameActivity_
         // (The script finds the creature it strengthens by its tag.)
         Run("zz_supercrit", {}, Scope::EachTag);
         toast = "strengthened";
+        break;
+    case kAddAbility:
+        // (The script adds the ability to the character the player controls; `amount` is its id,
+        // from abi_base: 4020 is the Rogue's hidden ability, which the game's lock and trap code asks for.)
+        if (amount <= 0)
+            return nullptr;
+        Run("addtalent", std::to_string(amount));
+        toast = "ability";
         break;
     default:
         return nullptr;

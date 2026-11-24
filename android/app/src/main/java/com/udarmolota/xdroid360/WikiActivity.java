@@ -24,6 +24,7 @@ import com.google.android.material.appbar.MaterialToolbar;
 public class WikiActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Appearance.apply(this);
         super.onCreate(savedInstanceState);
         int pad = dp(16);
 

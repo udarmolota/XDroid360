@@ -57,6 +57,11 @@ uint64_t PPCQueryTimebase() noexcept
     return (ns / 1000000000ull) * 49875000ull + (ns % 1000000000ull) * 49875000ull / 1000000000ull;
 }
 
+namespace dao_android
+{
+    void ApplyMods(const fs::path& gameRoot);
+}
+
 namespace dao
 {
     void ReportStub(const char* name, PPCContext& ctx)
@@ -300,6 +305,8 @@ int main(int argc, char* argv[])
     StartTimeStampThread();
 
     dao::LoadSettings(userRoot);
+    // File-override mods (mods/ next to game/ and userdata/), layered over the disc.
+    dao_android::ApplyMods(gameRoot);
     dao::gpu::LoadXeniaLiveSettings();
     // The Options menu's Graphics tab is patched into the menu (and the menu movies made).
     dao::ui::InitializeGraphicsMenu();

@@ -109,10 +109,11 @@ final class RecipeRunner {
             if (!step.optBoolean("keeps_game")) Instance.deleteTree(marker(step));
         }
         // So do the steps marked "rerun" (the shader library: a new launcher may bring a better
-        // translator).
+        // translator), but only if the tool that made what they made has changed since, or what
+        // they made is gone (rerunCurrent).
         for (int i = 0; i < steps.length(); i++) {
             JSONObject step = steps.optJSONObject(i);
-            if (step.optBoolean("rerun")) Instance.deleteTree(marker(step));
+            if (step.optBoolean("rerun") && !rerunCurrent(step)) Instance.deleteTree(marker(step));
         }
         //noinspection ResultOfMethodCallIgnored
         new File(work, "tmp").mkdirs();
@@ -667,6 +668,47 @@ final class RecipeRunner {
 
     private void writeMarker(JSONObject step) throws IOException {
         touch(marker(step));
+        // A "rerun" step's marker holds the hash of the tool that did it (rerunCurrent).
+        String hash = step.optBoolean("rerun") ? toolHash(step) : null;
+        if (hash != null) Files.write(marker(step).toPath(), hash.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Whether a "rerun" step's earlier run still stands: the same tool made it (the hash in its
+     * marker) and everything the step lists as "outputs" is there. A step that lists no outputs
+     * can't be checked, so it runs again.
+     */
+    private boolean rerunCurrent(JSONObject step) {
+        File marker = marker(step);
+        if (!marker.isFile()) return false;
+        List<String> outputs = strings(step.optJSONArray("outputs"));
+        if (outputs.isEmpty()) return false;
+        try {
+            for (String output : outputs) {
+                if (!new File(vars.text(output)).isFile()) return false;
+            }
+            String hash = toolHash(step);
+            return hash != null && hash.equals(new String(Files.readAllBytes(marker.toPath()), StandardCharsets.UTF_8).trim());
+        } catch (IOException | Recipe.Failure e) {
+            return false;
+        }
+    }
+
+    /** The SHA-256 of the tool a step runs (its libNAME.so), or null if it can't be read. */
+    private String toolHash(JSONObject step) {
+        String tool = step.optString("tool");
+        if (tool.isEmpty()) return null;
+        File exe = new File(Toolchain.tools(context), "lib" + tool + ".so");
+        try (FileInputStream in = new FileInputStream(exe)) {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[1 << 16];
+            for (int n; (n = in.read(buffer)) > 0; ) md.update(buffer, 0, n);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : md.digest()) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (IOException | java.security.NoSuchAlgorithmException e) {
+            return null;
+        }
     }
 
     private static void touch(File f) throws IOException {

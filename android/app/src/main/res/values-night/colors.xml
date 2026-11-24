@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The dark theme: the poster's red lightened to read on a dark surface, the surfaces a
+         warm near-black. Same names as values/colors.xml. -->
+    <color name="dao_red">#FFB4AB</color>
+    <color name="dao_red_dark">#FFDAD6</color>
+    <color name="dao_red_light">#5F1513</color>
+    <color name="dao_on_red">#690005</color>
+    <color name="dao_ink">#EDE0DE</color>
+    <color name="dao_ink_soft">#D8C2BF</color>
+    <color name="dao_surface">#1E1817</color>
+    <color name="dao_background">#151110</color>
+    <color name="dao_surface_high">#2B2221</color>
+    <color name="dao_surface_highest">#362C2B</color>
+    <color name="dao_surface_variant">#534342</color>
+    <color name="dao_outline">#A08C8A</color>
+    <color name="dao_outline_variant">#534342</color>
+</resources>

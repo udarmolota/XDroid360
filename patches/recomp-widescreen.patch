@@ -1,0 +1,123 @@
+diff --git a/DAORecomp/gpu/video.cpp b/DAORecomp/gpu/video.cpp
+index 89e82be..940f8da 100644
+--- a/DAORecomp/gpu/video.cpp
++++ b/DAORecomp/gpu/video.cpp
+@@ -436,6 +436,19 @@ DAO_IMPORT_AS(VdSwap, dao::imp::VdSwap)
+ // 2xMSAA (the upscaler failing, or SMAA turned off) from one frame to the next.
+ constexpr dao::kernel::GameAddress kSceneMsaaType{ 0x8316E35C, 0x8323E83C }; // D3DMULTISAMPLE_TYPE, 0: none
+ constexpr dao::kernel::GameAddress kSceneTileRects{ 0x82144D64, 0x8215E5A8 }; // D3DRECT {x1, y1, x2, y2}[2]
++// With 2xMSAA the scene's colour and depth share the 10 MB of EDRAM: width * rows * 2 samples *
++// (4 + 4) bytes. The engine's 1280x512 first tile fills it exactly. A wider display gets fewer rows
++// in the first tile (1600: 400, so 320 are left for the second), in whole 16-row EDRAM tiles; the
++// colour must not spill into the depth that starts at the same EDRAM base as for 1280 (it showed
++// as black bands). Two tiles are enough up to about 1780 pixels wide.
++static uint32_t SceneFirstTileRows(uint32_t displayWidth)
++{
++    if (displayWidth <= 1280)
++        return 512;
++    const uint32_t rows = (1280u * 512u / displayWidth) & ~15u;
++    return rows < 16 ? 16 : rows;
++}
++
+ static void SceneTilesHook(PPCContext& ctx, uint8_t* base, PPCFunc* original)
+ {
+     dao::ui::ApplyEngineGraphicsOptions(base);
+@@ -444,6 +457,13 @@ static void SceneTilesHook(PPCContext& ctx, uint8_t* base, PPCFunc* original)
+     if (ctx.r3.s32 != 2)
+         return;
+     const uint32_t rects = kSceneTileRects.Get();
++    // A widescreen display (DaoSceneWidthMidAsmHook): the tiles are as wide as the display.
++    const uint32_t displayWidth = dao::gpu::g_video.displayWidth;
++    if (displayWidth > 1280)
++    {
++        PPC_STORE_U32(rects + 8, displayWidth);
++        PPC_STORE_U32(rects + 24, displayWidth);
++    }
+     if (dao::gpu::XeniaActive() && dao::gpu::XeniaWantsSingleSampleScene())
+     {
+         PPC_STORE_U32(kSceneMsaaType.Get(), 0);
+@@ -453,7 +473,33 @@ static void SceneTilesHook(PPCContext& ctx, uint8_t* base, PPCFunc* original)
+     }
+     else
+     {
+-        PPC_STORE_U32(rects + 12, 512);
++        const uint32_t firstTileRows = SceneFirstTileRows(displayWidth);
++        PPC_STORE_U32(rects + 12, firstTileRows);
++        PPC_STORE_U32(rects + 20, firstTileRows); // the second tile starts where the first ends
+     }
+ }
+ GAME_HOOK(sub_82661640, tu6_sub_826955E8, SceneTilesHook)
++
++// Mid-asm hook placed by config/DAO.toml (0x8265E304) and config/DAO_tu6.toml (0x826922A4), in
++// the engine's display-size selection. The game ignores the width XGetVideoMode returns and
++// stores 1280x720 itself: r11 is the width and r10 the height about to be stored. With a
++// wider display mode set (SetDisplayMode, e.g. 1600x720) the width is replaced, so the
++// device and the render targets follow it.
++void DaoDisplayWidthMidAsmHook(PPCRegister& r11, PPCRegister& r10)
++{
++    const uint32_t width = dao::gpu::g_video.displayWidth;
++    if (width > 1280 && r10.u32 == 720)
++        r11.u64 = width;
++}
++
++// Mid-asm hook placed by config/DAO.toml (0x826616A0) and config/DAO_tu6.toml (0x82695648), at
++// the width compare of the scene's tile function (SceneTilesHook above): r11 is the display
++// width it just read. It only takes the HD path (2 tiles, 2xMSAA) for exactly 1280; with the
++// wider display DaoDisplayWidthMidAsmHook sets, it is told 1280, and SceneTilesHook widens
++// the tile rectangles.
++void DaoSceneWidthMidAsmHook(PPCRegister& r11)
++{
++    const uint32_t width = dao::gpu::g_video.displayWidth;
++    if (width > 1280 && r11.u32 == width)
++        r11.u64 = 1280;
++}
+diff --git a/config/DAO.toml b/config/DAO.toml
+index bd93b73..a6f6bd1 100644
+--- a/config/DAO.toml
++++ b/config/DAO.toml
+@@ -74,3 +74,21 @@ invalid_instructions = [
+     { data = 0x8312A1A4, size = 8 }, # __C_specific_handler record
+     { data = 0x00485645, size = 0x13C }, # data block at the end of .text (0x8312AA48-0x8312AB84)
+ ]
++
++# Widescreen (experimental): sub_8265E290 picks the display size the engine builds its device
++# and render targets from: 1280x720 (or 640x480 without HD), whatever XGetVideoMode reports.
++# Both paths meet at 0x8265E304 (stw r11, 0(r29): width; r10: height). The hook replaces the
++# width when the launcher reports a wider display (gpu/video.h SetDisplayMode).
++[[midasm_hook]]
++name = "DaoDisplayWidthMidAsmHook"
++address = 0x8265E304
++registers = ["r11", "r10"]
++
++# Widescreen (experimental): the scene's tile function (sub_82661640 / its title update twin) takes
++# the 2-tile 2xMSAA HD path only for a display of exactly 1280 wide; anything else gets the 640x480
++# single tile with 4xMSAA, so the 3D scene came out as a small 4:3 picture. The hook shows the
++# function the HD width when the display is the wider mode the launcher reported.
++[[midasm_hook]]
++name = "DaoSceneWidthMidAsmHook"
++address = 0x826616A0
++registers = ["r11"]
+diff --git a/config/DAO_tu6.toml b/config/DAO_tu6.toml
+index 5c2dfa8..f194150 100644
+--- a/config/DAO_tu6.toml
++++ b/config/DAO_tu6.toml
+@@ -79,3 +79,19 @@ invalid_instructions = [
+     { data = 0x831F408C, size = 8 }, # __C_specific_handler record
+     { data = 0x00485645, size = 0x13C }, # data block at the end of .text (0x831F4930-0x831F4A6C)
+ ]
++
++# Widescreen (experimental): the same place as in DAO.toml (0x8265E304 there), in the
++# title update's code; see DaoDisplayWidthMidAsmHook in DAORecomp/gpu/video.cpp.
++[[midasm_hook]]
++name = "DaoDisplayWidthMidAsmHook"
++address = 0x826922A4
++registers = ["r11", "r10"]
++
++# Widescreen (experimental): the scene's tile function (sub_82661640 / its title update twin) takes
++# the 2-tile 2xMSAA HD path only for a display of exactly 1280 wide; anything else gets the 640x480
++# single tile with 4xMSAA, so the 3D scene came out as a small 4:3 picture. The hook shows the
++# function the HD width when the display is the wider mode the launcher reported.
++[[midasm_hook]]
++name = "DaoSceneWidthMidAsmHook"
++address = 0x82695648
++registers = ["r11"]

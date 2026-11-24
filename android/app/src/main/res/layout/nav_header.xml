@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@color/dao_white"
+    android:background="?attr/colorSurface"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:padding="20dp">
@@ -24,7 +24,7 @@
             android:layout_height="wrap_content"
             android:text="@string/app_name"
             android:textAppearance="?attr/textAppearanceTitleLarge"
-            android:textColor="@color/dao_red" />
+            android:textColor="?attr/colorPrimary" />
 
         <TextView
             android:id="@+id/nav_version"

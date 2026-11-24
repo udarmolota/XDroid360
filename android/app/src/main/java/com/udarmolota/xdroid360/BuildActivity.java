@@ -58,6 +58,7 @@ public class BuildActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Appearance.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_build);
         MaterialToolbar toolbar = findViewById(R.id.toolbar);

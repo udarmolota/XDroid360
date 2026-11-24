@@ -4,8 +4,17 @@
     <color name="dao_red">#A80F0F</color>
     <color name="dao_red_dark">#7E0000</color>
     <color name="dao_red_light">#FFDAD6</color>
-    <color name="dao_white">#FFFFFF</color>
     <color name="dao_ink">#201A19</color>
     <color name="dao_ink_soft">#5C4F4E</color>
     <color name="dao_surface">#FFF8F7</color>
+    <!-- Text on the red, and the screens' base colour: these two change in the dark theme
+         (values-night). -->
+    <color name="dao_on_red">#FFFFFF</color>
+    <color name="dao_background">#FFFFFF</color>
+    <!-- The light theme's other surface roles (Material 3's defaults), named so the dark theme can set them. -->
+    <color name="dao_surface_high">#ECE6F0</color>
+    <color name="dao_surface_highest">#E6E0E9</color>
+    <color name="dao_surface_variant">#E7E0EC</color>
+    <color name="dao_outline">#79747E</color>
+    <color name="dao_outline_variant">#CAC4D0</color>
 </resources>

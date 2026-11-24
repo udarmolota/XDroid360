@@ -7,13 +7,9 @@
         android:icon="@drawable/ic_nav_home"
         android:title="@string/tab_home" />
     <item
-        android:id="@+id/tab_import"
-        android:icon="@drawable/ic_import"
-        android:title="@string/tab_import" />
-    <item
-        android:id="@+id/tab_export"
-        android:icon="@drawable/ic_export"
-        android:title="@string/tab_export" />
+        android:id="@+id/tab_transfer"
+        android:icon="@drawable/ic_import_export"
+        android:title="@string/tab_transfer" />
     <item
         android:id="@+id/tab_controls"
         android:icon="@drawable/ic_gamepad"
